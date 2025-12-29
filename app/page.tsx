@@ -13,6 +13,15 @@ import {
 } from "@/lib/csv-utils";
 import { format } from "date-fns";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, FileText, AlertTriangle, FileSpreadsheet } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function Home() {
   const [timecardFile, setTimecardFile] = React.useState<File | null>(null);
@@ -60,11 +69,11 @@ export default function Home() {
     if (!report) return;
 
     try {
-      const data = report.allEntries.map((entry) => ({
-        Name: sanitizeCSVField(entry.payrollName),
-        "Clock IN": entry.timeIn ? format(entry.timeIn, "HH:mm") : "",
-        "Clock Out": entry.timeOut ? format(entry.timeOut, "HH:mm") : "",
-        "Station Clock OUT": sanitizeCSVField(entry.workedDepartment),
+      const data = report.results.map((result) => ({
+        Name: sanitizeCSVField(result.employeeName),
+        "Clock IN": result.firstClockIn ? format(result.firstClockIn, "HH:mm") : "",
+        "Clock Out": result.lastClockOut ? format(result.lastClockOut, "HH:mm") : "",
+        "Station Clock OUT": "",
         Notes: "", // Empty field for manual notes during review
       }));
 
@@ -95,7 +104,7 @@ export default function Home() {
         Name: sanitizeCSVField(result.employeeName),
         "Clock IN": result.firstClockIn ? format(result.firstClockIn, "HH:mm") : "",
         "Clock Out": result.lastClockOut ? format(result.lastClockOut, "HH:mm") : "",
-        "Station Clock OUT": sanitizeCSVField(result.stationClockOut),
+        "Station Clock OUT": "",
         Notes: [
           sanitizeCSVField(result.message),
           result.breakRemarks ? `Remarks: ${sanitizeCSVField(result.breakRemarks)}` : null,
@@ -126,48 +135,55 @@ export default function Home() {
     }
   }
 
-  function exportToCSV() {
+  function exportToExcel(): void {
     if (!report) return;
 
-    const headers = [
-      "Employee",
-      "File Number",
-      "Gap (min)",
-      "Logged (min)",
-      "Status",
-      "Message",
-    ];
-    const rows = report.results.map((r) => [
-      r.employeeName,
-      r.fileNumber,
-      r.timecardGap?.gapMinutes ?? "",
-      r.breakSheetDuration ?? "",
-      r.status,
-      r.message,
-    ]);
+    try {
+      const workbook = XLSX.utils.book_new();
 
-    const csv = [headers, ...rows].map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
+      // Prepare data for Excel sheet
+      const sheetData = report.results.map((result) => ({
+        Name: result.employeeName,
+        "Clock IN": result.firstClockIn ? format(result.firstClockIn, "HH:mm") : "",
+        "Clock Out": result.lastClockOut ? format(result.lastClockOut, "HH:mm") : "",
+        "Station Clock OUT": "",
+        "Break Taken": result.breakSheetDuration ? "Yes" : "No",
+        "Break Duration": result.breakSheetDuration ? `${result.breakSheetDuration} mins` : "",
+        "Break Time": result.breakSheetTimeRange?.start && result.breakSheetTimeRange?.end
+          ? `${format(result.breakSheetTimeRange.start, "HH:mm")} - ${format(result.breakSheetTimeRange.end, "HH:mm")}`
+          : "",
+        "Lunch Break (30min)": result.breakSheetDuration && result.breakSheetDuration >= 30 ? "Yes" : "No",
+        Notes: "",
+      }));
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `discrepancy-report-${report.targetDate.replace(/\//g, "-")}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const worksheet = XLSX.utils.json_to_sheet(sheetData);
+
+      // Format date for sheet name (e.g., "12-24-2025")
+      const sheetName = report.targetDate.replace(/\//g, "-");
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+      // Generate and download
+      XLSX.writeFile(workbook, `timecard-${sheetName}.xlsx`);
+    } catch (error) {
+      console.error("Export failed:", error);
+      setError(`Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   }
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-7xl space-y-8">
         {/* Header */}
-        <header>
-          <h1 className="text-4xl font-bold tracking-tight text-foreground">
-            Time Sheet Break Audit
-          </h1>
-          <p className="mt-2 text-lg text-muted-foreground">
-            Compare timecard and break sheet CSVs to identify discrepancies
-          </p>
+        <header className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-foreground">
+              Time Sheet Break Audit
+            </h1>
+            <p className="mt-2 text-lg text-muted-foreground">
+              Compare timecard and break sheet CSVs to identify discrepancies
+            </p>
+          </div>
+          <ThemeToggle />
         </header>
 
         {/* File Upload Section */}
@@ -234,9 +250,43 @@ export default function Home() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Comparison Results</CardTitle>
-                  <Button onClick={exportToCSV} variant="outline" size="sm">
-                    Export CSV
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Export CSV
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-72">
+                      <DropdownMenuItem onClick={exportAllEntries} className="flex-col items-start gap-1 p-3">
+                        <div className="flex items-center gap-2 w-full">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">Export All Entries</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground pl-6">
+                          All timecard entries as CSV
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={exportDiscrepancies} className="flex-col items-start gap-1 p-3">
+                        <div className="flex items-center gap-2 w-full">
+                          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">Export Discrepancies</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground pl-6">
+                          Only items with issues as CSV
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={exportToExcel} className="flex-col items-start gap-1 p-3">
+                        <div className="flex items-center gap-2 w-full">
+                          <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">Export to Excel</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground pl-6">
+                          Full report with break details
+                        </span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </CardHeader>
               <CardContent>
