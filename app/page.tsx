@@ -11,6 +11,8 @@ import {
   generateDiscrepancyReport,
   type DiscrepancyReport,
 } from "@/lib/csv-utils";
+import { format } from "date-fns";
+import Papa from "papaparse";
 
 export default function Home() {
   const [timecardFile, setTimecardFile] = React.useState<File | null>(null);
@@ -40,6 +42,87 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "An unknown error occurred");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Sanitize CSV fields to prevent CSV injection attacks
+  function sanitizeCSVField(field: string | null | undefined): string {
+    if (!field) return "";
+    const str = String(field);
+    // Prefix dangerous characters with single quote to prevent formula execution
+    if (/^[=+\-@|%]/.test(str)) {
+      return `'${str}`;
+    }
+    return str;
+  }
+
+  function exportAllEntries(): void {
+    if (!report) return;
+
+    try {
+      const data = report.allEntries.map((entry) => ({
+        Name: sanitizeCSVField(entry.payrollName),
+        "Clock IN": entry.timeIn ? format(entry.timeIn, "HH:mm") : "",
+        "Clock Out": entry.timeOut ? format(entry.timeOut, "HH:mm") : "",
+        "Station Clock OUT": sanitizeCSVField(entry.workedDepartment),
+        Notes: "", // Empty field for manual notes during review
+      }));
+
+      const csv = Papa.unparse(data, { quotes: true, header: true });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `timecard-all-${report.targetDate.replace(/\//g, "-")}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      setError(`Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  function exportDiscrepancies(): void {
+    if (!report) return;
+
+    try {
+      const data = report.results.map((result) => ({
+        Name: sanitizeCSVField(result.employeeName),
+        "Clock IN": result.firstClockIn ? format(result.firstClockIn, "HH:mm") : "",
+        "Clock Out": result.lastClockOut ? format(result.lastClockOut, "HH:mm") : "",
+        "Station Clock OUT": sanitizeCSVField(result.stationClockOut),
+        Notes: [
+          sanitizeCSVField(result.message),
+          result.breakRemarks ? `Remarks: ${sanitizeCSVField(result.breakRemarks)}` : null,
+          result.timecardGap
+            ? `Gap: ${result.timecardGap.gapMinutes}min, Logged: ${result.breakSheetDuration ?? "N/A"}min`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" | "),
+      }));
+
+      const csv = Papa.unparse(data, { quotes: true, header: true });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `timecard-discrepancies-${report.targetDate.replace(/\//g, "-")}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      setError(`Failed to export: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 

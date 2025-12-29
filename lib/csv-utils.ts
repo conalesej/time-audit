@@ -1,5 +1,5 @@
 import Papa from "papaparse";
-import { parse, differenceInMinutes } from "date-fns";
+import { parse, differenceInMinutes, format } from "date-fns";
 import { DiffStatus } from "./utils";
 import { matchEmployeeByName } from "./name-matcher";
 
@@ -13,6 +13,7 @@ export interface TimecardEntry {
   timeIn: Date | null;
   timeOut: Date | null;
   hours: number;
+  workedDepartment: string;
 }
 
 /**
@@ -27,6 +28,7 @@ export interface BreakSheetEntry {
     actualMinutes: number | null;
   } | null;
   hasRemarks: boolean;
+  remarkText: string | null;
 }
 
 /**
@@ -52,6 +54,9 @@ export interface EmployeeComparisonResult {
   // Timecard data
   timecardGap: TimecardGap | null;
   totalShiftHours: number;
+  firstClockIn: Date | null;
+  lastClockOut: Date | null;
+  stationClockOut: string | null;
 
   // Break sheet data
   breakSheetDuration: number | null;
@@ -60,6 +65,7 @@ export interface EmployeeComparisonResult {
     end: Date | null;
     actualMinutes: number | null;
   } | null;
+  breakRemarks: string | null;
 
   // Comparison result
   status: DiffStatus;
@@ -86,6 +92,9 @@ export interface DiscrepancyReport {
 
   // Individual results
   results: EmployeeComparisonResult[];
+
+  // All timecard entries for "Export All" mode
+  allEntries: TimecardEntry[];
 }
 
 /**
@@ -191,6 +200,7 @@ export function parseTimecardCSV(file: File): Promise<TimecardEntry[]> {
             timeIn,
             timeOut,
             hours: parseFloat(row["Hours"]) || 0,
+            workedDepartment: row["Worked Department"]?.trim() || "",
           });
         }
 
@@ -229,7 +239,8 @@ export function parseBreakSheetCSV(file: File): Promise<BreakSheetEntry[]> {
           if (!driverName) continue; // Skip rows without driver name
 
           const breakDuration = parseBreakDuration(row[1] || "");
-          const hasRemarks = (row[3]?.trim() || "") !== "";
+          const remarkText = row[3]?.trim() || null;
+          const hasRemarks = remarkText !== null && remarkText !== "";
           const timeRangeStr = row[5]?.trim() || "";
           const breakTimeRange = parseTimeRange(timeRangeStr);
 
@@ -238,6 +249,7 @@ export function parseBreakSheetCSV(file: File): Promise<BreakSheetEntry[]> {
             breakDuration,
             breakTimeRange,
             hasRemarks,
+            remarkText,
           });
         }
 
@@ -414,6 +426,19 @@ export function generateDiscrepancyReport(
     const employeeName = entries[0].payrollName;
     const totalShiftHours = entries.reduce((sum, e) => sum + e.hours, 0);
 
+    // Calculate first clock in and last clock out
+    const entriesWithTimes = entries.filter((e) => e.timeIn !== null && e.timeOut !== null);
+    const firstClockIn = entriesWithTimes.length > 0
+      ? entriesWithTimes.reduce((min, e) => (e.timeIn! < min ? e.timeIn! : min), entriesWithTimes[0].timeIn!)
+      : null;
+    const lastClockOut = entriesWithTimes.length > 0
+      ? entriesWithTimes.reduce((max, e) => (e.timeOut! > max ? e.timeOut! : max), entriesWithTimes[0].timeOut!)
+      : null;
+
+    // Get station from last entry
+    const lastEntry = entries[entries.length - 1];
+    const stationClockOut = lastEntry.workedDepartment || null;
+
     // Find gap for this employee
     const employeeGap = gaps.find((g) => g.fileNumber === fileNumber) || null;
 
@@ -437,8 +462,12 @@ export function generateDiscrepancyReport(
       matchScore: nameMatch.score,
       timecardGap: employeeGap,
       totalShiftHours,
+      firstClockIn,
+      lastClockOut,
+      stationClockOut,
       breakSheetDuration: breakEntry?.breakDuration || null,
       breakSheetTimeRange: breakEntry?.breakTimeRange || null,
+      breakRemarks: breakEntry?.remarkText || null,
       status: comparison.status,
       discrepancyMinutes: comparison.discrepancyMinutes,
       message: comparison.message,
@@ -460,5 +489,6 @@ export function generateDiscrepancyReport(
     generatedAt: new Date(),
     summary,
     results,
+    allEntries: dateEntries,
   };
 }
