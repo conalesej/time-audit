@@ -1,26 +1,313 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* =============================================================================
+   CSV AUDIT DESIGN SYSTEM
+   Theme: Industrial-Precision
+   Purpose: Data comparison with high-contrast diff visualization
+   ============================================================================= */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Core Colors */
+:root {
+  --background: #fafafa;
+  --foreground: #18181b;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+
+  /* Borders & Dividers */
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --ring: #3b82f6;
+
+  /* Muted/Subtle */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+
+  /* Semantic: Diff States */
+  --match: #10b981;
+  --match-subtle: #d1fae5;
+  --match-foreground: #065f46;
+
+  --mismatch: #ef4444;
+  --mismatch-subtle: #fee2e2;
+  --mismatch-foreground: #991b1b;
+
+  --addition: #3b82f6;
+  --addition-subtle: #dbeafe;
+  --addition-foreground: #1e40af;
+
+  --deletion: #f97316;
+  --deletion-subtle: #ffedd5;
+  --deletion-foreground: #9a3412;
+
+  --warning: #eab308;
+  --warning-subtle: #fef9c3;
+  --warning-foreground: #854d0e;
+
+  /* Interactive */
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+
+  /* Data Table Specific */
+  --row-hover: #f4f4f5;
+  --row-selected: #eff6ff;
+  --cell-highlight: #fef3c7;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Core */
+    --background: #09090b;
+    --foreground: #fafafa;
+    --surface: #18181b;
+    --surface-elevated: #27272a;
+
+    /* Borders & Dividers */
+    --border: #27272a;
+    --border-strong: #3f3f46;
+    --ring: #3b82f6;
+
+    /* Muted/Subtle */
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+
+    /* Semantic: Diff States (adjusted for dark) */
+    --match: #34d399;
+    --match-subtle: #064e3b;
+    --match-foreground: #a7f3d0;
+
+    --mismatch: #f87171;
+    --mismatch-subtle: #7f1d1d;
+    --mismatch-foreground: #fecaca;
+
+    --addition: #60a5fa;
+    --addition-subtle: #1e3a5f;
+    --addition-foreground: #bfdbfe;
+
+    --deletion: #fb923c;
+    --deletion-subtle: #7c2d12;
+    --deletion-foreground: #fed7aa;
+
+    --warning: #facc15;
+    --warning-subtle: #713f12;
+    --warning-foreground: #fef08a;
+
+    /* Interactive */
+    --primary: #fafafa;
+    --primary-foreground: #18181b;
+    --secondary: #27272a;
+    --secondary-foreground: #fafafa;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
+
+    /* Data Table Specific */
+    --row-hover: #27272a;
+    --row-selected: #1e3a5f;
+    --cell-highlight: #422006;
   }
 }
 
+/* Tailwind CSS v4 Theme Configuration */
+@theme inline {
+  /* Colors - Core */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+
+  /* Colors - Borders */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ring: var(--ring);
+
+  /* Colors - Muted */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  /* Colors - Semantic Diff States */
+  --color-match: var(--match);
+  --color-match-subtle: var(--match-subtle);
+  --color-match-foreground: var(--match-foreground);
+
+  --color-mismatch: var(--mismatch);
+  --color-mismatch-subtle: var(--mismatch-subtle);
+  --color-mismatch-foreground: var(--mismatch-foreground);
+
+  --color-addition: var(--addition);
+  --color-addition-subtle: var(--addition-subtle);
+  --color-addition-foreground: var(--addition-foreground);
+
+  --color-deletion: var(--deletion);
+  --color-deletion-subtle: var(--deletion-subtle);
+  --color-deletion-foreground: var(--deletion-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-foreground: var(--warning-foreground);
+
+  /* Colors - Interactive */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* Colors - Table */
+  --color-row-hover: var(--row-hover);
+  --color-row-selected: var(--row-selected);
+  --color-cell-highlight: var(--cell-highlight);
+
+  /* Typography - Fonts */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Typography - Sizes (Data-Dense Scale) */
+  --font-size-2xs: 0.625rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8125rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.125rem;
+  --font-size-2xl: 1.25rem;
+  --font-size-3xl: 1.5rem;
+  --font-size-4xl: 2rem;
+
+  /* Typography - Line Heights (Tight for tables) */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+
+  /* Typography - Letter Spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* Spacing - Compact Scale for Data UI */
+  --spacing-0: 0px;
+  --spacing-px: 1px;
+  --spacing-0_5: 0.125rem;
+  --spacing-1: 0.25rem;
+  --spacing-1_5: 0.375rem;
+  --spacing-2: 0.5rem;
+  --spacing-2_5: 0.625rem;
+  --spacing-3: 0.75rem;
+  --spacing-3_5: 0.875rem;
+  --spacing-4: 1rem;
+  --spacing-5: 1.25rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-10: 2.5rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+  --spacing-20: 5rem;
+  --spacing-24: 6rem;
+
+  /* Border Radius */
+  --radius-none: 0px;
+  --radius-sm: 0.25rem;
+  --radius-default: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-default: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Transitions */
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Animation Durations */
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-300: 300ms;
+}
+
+/* Base Styles */
+*,
+*::before,
+*::after {
+  border-color: var(--border);
+}
+
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Monospace for data display */
+code,
+kbd,
+pre,
+samp,
+.font-mono,
+[data-mono] {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Focus ring utility */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Accessibility: Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
